@@ -100,7 +100,7 @@ The calculated grayscale values are stored in a one-dimensional array and then r
 The GPU implementation is written using Numba's CUDA programming interface. A CUDA kernel is defined using the \texttt{@cuda.jit} decorator.
 
 Each CUDA thread processes one pixel. The global thread index is obtained using:
-
+ 
 $$
 i = \texttt{cuda.grid(1)}
 $$
