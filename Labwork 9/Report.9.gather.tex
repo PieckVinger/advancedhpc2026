@@ -1,0 +1,342 @@
+\documentclass[11pt]{article}
+
+\usepackage{ulem}
+\usepackage{tikz}
+\usepackage{xurl}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage[T5]{fontenc}
+\usepackage{indentfirst}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usetikzlibrary{arrows.meta, positioning}
+
+\begin{document}
+
+\begin{center}
+
+{\Large \textbf{UNIVERSITY OF SCIENCE AND TECHNOLOGY OF HANOI}}\\
+\vspace{0.3cm}
+----------------------o0o----------------------\\
+
+\vspace{4cm}
+
+{\large
+\centerline{2540027 - Nguyễn Xuân Vinh}
+}
+
+\vspace{4cm}
+
+{\Huge \textbf{BC3.04a Advanced Programming for HPC}}\\
+\vspace{0.5cm}
+Lecturer: Dr. Trần Giang Sơn
+
+\vspace{4cm}
+
+{\Large \textbf{REPORT LABWORK 9}}\\
+
+\vspace{0.5cm}
+
+{\large
+Subjects: Histogram Equalization
+}
+
+\vspace{4cm}
+\today
+\end{center}
+
+\newpage
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+\section{Objective}
+
+The objective of the labwork 9 is to implement histogram calculation and
+histogram equalization for a grayscale image.
+
+The lab consists of two main parts:
+
+\begin{itemize}
+    \item Labwork 9a: calculate the grayscale histogram using local
+    histograms and reduction.
+    \item Labwork 9b: perform histogram equalization using the histogram,
+    probability distribution, cumulative distribution function (CDF), and
+    a pixel intensity mapping.
+\end{itemize}
+
+The implementation also tests different 2D block sizes and measures the
+execution time of the main operations.
+
+\section{Input Image}
+
+The input image was loaded from:
+
+\begin{verbatim}
+/content/img.jpg
+\end{verbatim}
+
+The image has a resolution of $1080 \times 1920$ pixels, giving a total of
+
+\[
+1080 \times 1920 = 2\,073\,600
+\]
+
+pixels.
+
+The input RGB image is first converted to grayscale using OpenCV. The
+grayscale image contains intensity values from 0 to 255.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/original_grayscale.png}
+    \caption{Input grayscale image.}
+    \label{fig:original_grayscale}
+\end{figure}
+
+\section{Labwork 9a: Histogram}
+
+\section{Histogram Calculation}
+
+A grayscale histogram contains 256 bins. Bin $i$ represents the number of
+pixels whose grayscale intensity is equal to $i$.
+
+In a serial implementation, the histogram can be calculated by visiting
+every pixel and increasing the corresponding bin:
+
+\begin{verbatim}
+for y in range(height):
+    for x in range(width):
+        histogram[image[y][x]] += 1
+\end{verbatim}
+
+For the labwork 9, the histogram is implemented using the local histogram
+approach described in the lab sheet.
+
+\section{Local Histograms}
+
+The grayscale image is divided into 2D blocks. Each block calculates its
+own local histogram containing 256 bins.
+
+For each pixel in a block, its grayscale value is used as the index of the
+corresponding local histogram bin.
+
+Therefore, instead of directly modifying one global histogram, each block
+produces an independent local histogram.
+
+\section{Reduction}
+
+After all local histograms have been calculated, they are combined using a
+reduction operation.
+
+For every intensity $i$, the global histogram is calculated as
+
+\[
+H[i] = \sum_k H_k[i],
+\]
+
+where $H_k[i]$ is the local histogram of block $k$.
+
+This produces the final 256-bin histogram of the complete image.
+
+For the main experiment, a block size of $16 \times 16$ was used.
+
+The calculated histogram contained exactly
+
+\[
+2\,073\,600
+\]
+
+pixels, which is equal to the total number of pixels in the input image.
+The histogram was also compared with a serial reference implementation and
+the result was identical.
+
+\section{Labwork 9b: Histogram Equalization}
+
+Histogram equalization increases the global contrast of an image by
+remapping the original grayscale intensities according to the cumulative
+distribution of the histogram.
+
+The implementation follows the steps given in the lab sheet.
+
+\section{Probability Distribution}
+
+First, the probability of each intensity value is calculated from the
+histogram:
+
+\[
+p_i = \frac{H[i]}{n},
+\]
+
+where $H[i]$ is the histogram count for intensity $i$ and $n$ is the total
+number of pixels.
+
+For this image,
+
+\[
+n = 2\,073\,600.
+\]
+
+The sum of all probabilities was
+
+\[
+\sum_{i=0}^{255} p_i = 1.000000000000.
+\]
+
+\section{Cumulative Distribution Function}
+
+The cumulative distribution function is calculated sequentially:
+
+\[
+c_i = \sum_{j=0}^{i} p_j.
+\]
+
+Although a parallel Scan could be used for this operation, the lab sheet
+specifically states that Scan has not yet been introduced. Therefore, the
+CDF was calculated sequentially.
+
+The final CDF value was
+
+\[
+c_{255} = 1.000000000000.
+\]
+
+The calculated CDF was also verified to be monotonically increasing and to
+remain within the range $[0,1]$.
+
+\section{Intensity Mapping}
+
+The CDF is linearly scaled from $[0,1]$ to the grayscale range $[0,255]$:
+
+\[
+h_i = c_i \times 255.
+\]
+
+The resulting mapping has a range from 0 to 255.
+
+Each original grayscale pixel with intensity $i$ is then replaced by
+$h_i$.
+
+This produces the histogram-equalized image.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/equalized.png}
+    \caption{Histogram-equalized grayscale image.}
+    \label{fig:equalized}
+\end{figure}
+
+\section{Results}
+
+\section{Correctness}
+
+Several checks were performed after the implementation.
+
+The histogram contained exactly the same number of pixels as the input
+image:
+
+\[
+\sum_{i=0}^{255} H[i] = 2\,073\,600.
+\]
+
+The probability distribution summed to 1, and the final CDF value was also
+1.
+
+The following correctness checks were obtained:
+
+\begin{itemize}
+    \item Histogram count correct: True.
+    \item Probability sum approximately 1: True.
+    \item CDF monotonic: True.
+    \item CDF is in $[0,1]$: True.
+    \item Equalization mapping is monotonic: True.
+    \item Equalized image size unchanged: True.
+    \item Equalized histogram count correct: True.
+\end{itemize}
+
+\section{Different Block Sizes}
+
+The implementation was tested with five different 2D block sizes.
+
+\begin{table}[H]
+\centering
+\caption{Performance for different block sizes.}
+\label{tab:block_results}
+\begin{tabular}{lrrrr}
+\toprule
+Block Size & Histogram (s) & CDF (s) & Equalization (s) & Total (s) \\
+\midrule
+$4\times4$   & 1.763331 & 0.000074 & 0.305602 & 2.069006 \\
+$8\times8$   & 1.631795 & 0.000130 & 0.142211 & 1.774136 \\
+$16\times16$ & 1.378689 & 0.000065 & 0.024245 & 1.403000 \\
+$32\times32$ & 0.811796 & 0.000115 & 0.010864 & 0.822775 \\
+$64\times64$ & 0.857225 & 0.000106 & 0.007107 & 0.864438 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All block sizes produced a correct histogram. The equalized images produced
+with the different block sizes were also identical to the $16\times16$
+reference result.
+
+The maximum difference between the results was
+
+\[
+0
+\]
+
+and the mean difference was
+
+\[
+0.0.
+\]
+
+Therefore, changing the block size affected the execution time but did not
+change the resulting histogram or equalized image.
+
+\section{Performance}
+
+The execution time was measured for the histogram calculation, the
+sequential CDF calculation, and the equalization mapping.
+
+The histogram calculation was the main computational part of the
+implementation. Its execution time decreased when the block size was
+increased from $4\times4$ to $32\times32$. The $64\times64$ configuration
+had a slightly higher histogram time than $32\times32$ in this experiment.
+
+The equalization mapping also became faster with larger blocks, decreasing
+from $0.305602$ seconds for $4\times4$ blocks to $0.007107$ seconds for
+$64\times64$ blocks.
+
+The total measured time ranged from $2.069006$ seconds for $4\times4$
+blocks to $0.864438$ seconds for $64\times64$ blocks.
+
+No conventional speedup value was calculated because the lab implementation
+does not contain a separate optimized implementation to use as a baseline.
+The measurements therefore show the performance differences between block
+sizes rather than a speedup between two different algorithms.
+
+\section{Conclusion}
+
+In the labwork 9, a 256-bin histogram was implemented for a grayscale image
+using local histograms followed by a reduction operation. The histogram
+calculation was verified against a serial reference implementation.
+
+Histogram equalization was then implemented using the histogram,
+probability distribution, sequential CDF calculation, and intensity
+mapping from $[0,255]$ to $[0,255]$.
+
+The implementation was tested with block sizes of $4\times4$, $8\times8$,
+$16\times16$, $32\times32$, and $64\times64$. All configurations produced
+the same correct histogram and identical equalized output.
+
+The experiments also showed that the choice of block size affects
+execution time, while the resulting image remains unchanged.
+
+\end{document}
